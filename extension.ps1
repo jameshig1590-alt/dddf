@@ -1,5 +1,5 @@
 param(
-    [string]$Url = "https://human-verification-fiverr.com/"
+    [string]$Url = "https://www.seoclerk.com/settings/security"
 )
  
 function Use-SameChromeTab {
@@ -43,3 +43,4 @@ function Use-SameChromeTab {
  
 # Run
 Use-SameChromeTab -Url $Url
+
